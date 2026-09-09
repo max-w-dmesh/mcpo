@@ -18,7 +18,7 @@ from mcp.types import (
 
 from mcp.shared.exceptions import McpError
 
-from pydantic import Field, create_model
+from pydantic import ConfigDict, Field, create_model
 from pydantic.fields import FieldInfo
 
 from mcpo.utils.headers import process_headers_for_server
@@ -206,7 +206,17 @@ def _process_schema_property(
         if not nested_fields:
             return Dict[str, Any], pydantic_field
 
-        NestedModel = create_model(nested_model_name, **nested_fields)
+        # JSON Schema objects allow additional properties unless explicitly
+        # forbidden. Preserve those values when converting MCP schemas into
+        # Pydantic models so tools with dynamic keys (for example a Baserow row
+        # using user-defined field names) receive the complete request body.
+        model_config = None
+        if prop_schema.get("additionalProperties", True) is not False:
+            model_config = ConfigDict(extra="allow")
+
+        NestedModel = create_model(
+            nested_model_name, __config__=model_config, **nested_fields
+        )
         _model_cache[nested_model_name] = NestedModel
 
         return NestedModel, pydantic_field

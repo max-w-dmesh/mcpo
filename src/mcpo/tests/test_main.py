@@ -195,6 +195,22 @@ def test_process_array_of_objects():
     assert item_model_fields["item_id"].is_required()
 
 
+def test_process_object_with_additional_properties_preserves_extra_values():
+    schema = {
+        "type": "object",
+        "properties": {"id": {"type": "integer"}},
+        "required": ["id"],
+        "additionalProperties": True,
+    }
+
+    result_type, _ = _process_schema_property(
+        _model_cache, schema, "test", "row", True
+    )
+
+    row = result_type.model_validate({"id": 251, "Mitarbeiter Auswahl": [1]})
+    assert row.model_dump() == {"id": 251, "Mitarbeiter Auswahl": [1]}
+
+
 def test_process_empty_object():
     schema = {"type": "object", "properties": {}}
     expected_type = Dict[str, Any]  # Should default to Dict[str, Any] if no properties
