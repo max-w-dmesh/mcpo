@@ -615,13 +615,7 @@ async def lifespan(app: FastAPI):
                         )
                         failed_servers.append(server_name)
                 except asyncio.CancelledError as e:
-                    if shutdown_handler and shutdown_handler.shutdown_event.is_set():
-                        raise
-                    logger.error(
-                        f"Failed to establish connection for server: '{server_name}' - CancelledError: {e}",
-                        exc_info=True,
-                    )
-                    failed_servers.append(server_name)
+                    raise
                 except Exception as e:
                     error_class_name = type(e).__name__
                     if error_class_name == "ExceptionGroup" or (

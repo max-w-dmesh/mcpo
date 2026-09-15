@@ -1,6 +1,7 @@
 import logging
 import json
 import traceback
+import asyncio
 from typing import Any, Dict, ForwardRef, List, Optional, Type, Union
 
 from anyio import ClosedResourceError
@@ -298,14 +299,17 @@ def get_tool_handler(
         session_manager = getattr(request.app.state, "session_manager", None)
 
         async def _invoke(session):
-            return await session.call_tool(endpoint_name, arguments=arguments)
+            return await asyncio.wait_for(
+                session.call_tool(endpoint_name, arguments=arguments),
+                timeout=60.0
+            )
 
         if session_manager:
             try:
                 session, _ = await session_manager.ensure_initialized()
-            except ClosedResourceError:
+            except (ClosedResourceError, asyncio.TimeoutError):
                 logger.warning(
-                    "Session closed while initializing '%s'; attempting reconnect",
+                    "Session closed or timed out while initializing '%s'; attempting reconnect",
                     endpoint_name,
                 )
                 session, _ = await session_manager.reconnect()
@@ -313,9 +317,9 @@ def get_tool_handler(
 
             try:
                 return await _invoke(session)
-            except ClosedResourceError:
+            except (ClosedResourceError, asyncio.TimeoutError):
                 logger.warning(
-                    "Session closed during call to '%s'; attempting reconnect",
+                    "Session closed or timed out during call to '%s'; attempting reconnect",
                     endpoint_name,
                 )
                 session, _ = await session_manager.reconnect()

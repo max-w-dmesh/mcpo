@@ -199,14 +199,14 @@ class CallbackServer:
         if self.thread:
             self.thread.join(timeout=1)
             
-    def wait_code(self, timeout: int = 300) -> str:
+    async def wait_code(self, timeout: int = 300) -> str:
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self.data["authorization_code"]:
                 return self.data["authorization_code"]
             if self.data["error"]:
                 raise RuntimeError(f"OAuth error: {self.data['error']}")
-            time.sleep(0.05)
+            await asyncio.sleep(0.05)
         raise TimeoutError("No OAuth callback received within timeout")
         
     def state(self) -> Optional[str]:
@@ -267,7 +267,7 @@ async def create_oauth_provider(
         async def callback_handler() -> Tuple[str, Optional[str]]:
             callback_server.start()
             try:
-                code = callback_server.wait_code()
+                code = await callback_server.wait_code()
                 return code, callback_server.state()
             finally:
                 callback_server.stop()

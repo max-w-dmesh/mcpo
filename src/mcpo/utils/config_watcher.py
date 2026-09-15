@@ -7,8 +7,7 @@ from typing import Callable, Optional, Dict, Any
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileMovedEvent, FileCreatedEvent
 import threading
-
-
+from anyio import Path as AnyioPath
 logger = logging.getLogger(__name__)
 
 
@@ -105,9 +104,9 @@ class ConfigChangeHandler(FileSystemEventHandler):
 
             logger.debug(f"Processing config file change: {self.config_path}")
 
-            # Read and validate the new config
-            with open(self.config_path, 'r') as f:
-                new_config = json.load(f)
+            # Read and validate the new config asynchronously
+            content = await AnyioPath(self.config_path).read_text()
+            new_config = await asyncio.to_thread(json.loads, content)
 
             # Call the reload callback
             await self.reload_callback(new_config)
